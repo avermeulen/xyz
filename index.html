@@ -14,9 +14,16 @@
             Accelerometer not active - Click "Start Tracking" to begin
         </div>
 
-        <div class="data-counter-container">
+        <div class="data-counter-container hidden" id="dataCounterContainer">
             <div class="data-counter-label">Data Points Recorded:</div>
             <div class="data-counter-value" id="dataCounter">0</div>
+        </div>
+
+        <div class="data-mode-toggle">
+            <label class="checkbox-label">
+                <input type="checkbox" id="dataMode">
+                <span>Enable Data Collection Mode</span>
+            </label>
         </div>
 
         <div class="controls">
@@ -61,14 +68,14 @@
             </div>
         </div>
 
-        <div class="data-history">
+        <div class="data-history hidden" id="dataHistorySection">
             <h2>Data History</h2>
             <div id="historyContainer">
                 <div class="empty-state">No data recorded yet. Start tracking to begin.</div>
             </div>
         </div>
 
-        <div class="export-section">
+        <div class="export-section hidden" id="exportSection">
             <h2>CSV Export</h2>
             <textarea id="csvOutput" readonly placeholder="CSV data will appear here..."></textarea>
             <div class="button-group">

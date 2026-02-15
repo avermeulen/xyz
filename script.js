@@ -109,6 +109,29 @@ let classifier = new MotionClassifier({
 }); // Window-based 3-class classifier
 
 let sessionDataCount = 0; // Counter for data points in current tracking session
+let isDataModeEnabled = false; // Flag to track if data collection mode is enabled
+
+function toggleDataMode() {
+    const checkbox = document.getElementById('dataMode');
+    if (!checkbox) return;
+    
+    isDataModeEnabled = checkbox.checked;
+    
+    // Toggle visibility of data-related sections using CSS classes
+    const elementIds = ['dataCounterContainer', 'dataHistorySection', 'exportSection'];
+    const elements = elementIds.map(id => document.getElementById(id));
+    
+    // Check all elements exist before manipulating
+    if (elements.some(el => !el)) return;
+    
+    elements.forEach(element => {
+        if (isDataModeEnabled) {
+            element.classList.remove('hidden');
+        } else {
+            element.classList.add('hidden');
+        }
+    });
+}
 
 function updateStatus(message, isActive) {
     const statusEl = document.getElementById('status');
@@ -324,6 +347,11 @@ function formatAccelValue(value) {
 }
 
 function recordData(x, y, z, motionType, predictedMotion) {
+    // Only record data if data mode is enabled
+    if (!isDataModeEnabled) {
+        return;
+    }
+    
     const timestamp = new Date().toISOString();
     const dataPoint = {
         timestamp,
@@ -465,6 +493,16 @@ function clearData() {
 
 // Initialize on page load
 window.addEventListener('load', () => {
+    // Initialize data mode state from checkbox
+    const checkbox = document.getElementById('dataMode');
+    if (checkbox) {
+        isDataModeEnabled = checkbox.checked;
+        // Sync UI with initial checkbox state
+        toggleDataMode();
+        // Add event listener for checkbox changes
+        checkbox.addEventListener('change', toggleDataMode);
+    }
+    
     updateHistoryDisplay();
     
     // Check for sensor API support
