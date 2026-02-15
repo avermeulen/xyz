@@ -343,7 +343,7 @@
             try {
                 // 10 Hz frequency provides good balance between data granularity and performance
                 // Adjust this value based on your needs: higher = more data points, lower = less memory usage
-                accelerometer = new Accelerometer({ frequency: 10 }); // 10 Hz
+                accelerometer = new Accelerometer({ frequency: 10 });
                 
                 accelerometer.addEventListener('reading', () => {
                     const x = accelerometer.x.toFixed(2);
@@ -433,7 +433,7 @@
             html += '</tr></thead><tbody>';
             
             recentData.forEach(data => {
-                const time = new Date(data.timestamp).toLocaleTimeString();
+                const time = new Date(data.timestamp).toLocaleString();
                 html += `<tr>
                     <td>${time}</td>
                     <td>${data.motionType}</td>
@@ -464,7 +464,7 @@
             document.getElementById('csvOutput').value = csv;
         }
 
-        function copyToClipboard(event) {
+        function copyToClipboard(evt) {
             const csvOutput = document.getElementById('csvOutput');
             
             if (!csvOutput.value) {
@@ -475,23 +475,25 @@
             // Use modern Clipboard API
             navigator.clipboard.writeText(csvOutput.value).then(() => {
                 // Visual feedback
-                const originalText = event.target.textContent;
-                event.target.textContent = '✓ Copied!';
+                const button = evt.target;
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
                 setTimeout(() => {
-                    event.target.textContent = originalText;
+                    button.textContent = originalText;
                 }, 2000);
             }).catch((err) => {
-                // Fallback for older browsers
+                // Fallback for older browsers (execCommand is deprecated but kept for compatibility)
                 csvOutput.select();
                 try {
                     document.execCommand('copy');
-                    const originalText = event.target.textContent;
-                    event.target.textContent = '✓ Copied!';
+                    const button = evt.target;
+                    const originalText = button.textContent;
+                    button.textContent = '✓ Copied!';
                     setTimeout(() => {
-                        event.target.textContent = originalText;
+                        button.textContent = originalText;
                     }, 2000);
                 } catch (e) {
-                    alert('Failed to copy to clipboard: ' + err.message);
+                    alert('Failed to copy to clipboard. Please manually select and copy the text.');
                 }
             });
         }
