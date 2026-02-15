@@ -109,6 +109,26 @@ let classifier = new MotionClassifier({
 }); // Window-based 3-class classifier
 
 let sessionDataCount = 0; // Counter for data points in current tracking session
+let isDataModeEnabled = false; // Flag to track if data collection mode is enabled
+
+function toggleDataMode() {
+    isDataModeEnabled = document.getElementById('dataMode').checked;
+    
+    // Toggle visibility of data-related sections
+    const dataCounterContainer = document.getElementById('dataCounterContainer');
+    const dataHistorySection = document.getElementById('dataHistorySection');
+    const exportSection = document.getElementById('exportSection');
+    
+    if (isDataModeEnabled) {
+        dataCounterContainer.style.display = 'flex';
+        dataHistorySection.style.display = 'block';
+        exportSection.style.display = 'block';
+    } else {
+        dataCounterContainer.style.display = 'none';
+        dataHistorySection.style.display = 'none';
+        exportSection.style.display = 'none';
+    }
+}
 
 function updateStatus(message, isActive) {
     const statusEl = document.getElementById('status');
@@ -324,6 +344,11 @@ function formatAccelValue(value) {
 }
 
 function recordData(x, y, z, motionType, predictedMotion) {
+    // Only record data if data mode is enabled
+    if (!isDataModeEnabled) {
+        return;
+    }
+    
     const timestamp = new Date().toISOString();
     const dataPoint = {
         timestamp,
