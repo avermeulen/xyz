@@ -1,9 +1,94 @@
+// WalkJumpWindowClassifier: Time-based window feature extraction and classification
+class WalkJumpWindowClassifier {
+    constructor(config = {}) {
+        this.windowMs = config.windowMs || 500;
+        this.minSamples = config.minSamples || 10;
+        this.stdThreshold = config.stdThreshold || 3.0;
+        this.maxThreshold = config.maxThreshold || 15.0;
+        
+        this.reset();
+    }
+    
+    reset() {
+        this.windowStart = null;
+        this.mags = [];
+        this.samples = [];
+    }
+    
+    magnitude(x, y, z) {
+        return Math.sqrt(x * x + y * y + z * z);
+    }
+    
+    mean(arr) {
+        if (arr.length === 0) return 0;
+        return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+    }
+    
+    std(arr) {
+        if (arr.length === 0) return 0;
+        const avg = this.mean(arr);
+        const squareDiffs = arr.map(val => Math.pow(val - avg, 2));
+        return Math.sqrt(this.mean(squareDiffs));
+    }
+    
+    addSample({tMs, x, y, z}) {
+        // Initialize window start on first sample
+        if (this.windowStart === null) {
+            this.windowStart = tMs;
+        }
+        
+        // Calculate magnitude
+        const mag = this.magnitude(x, y, z);
+        this.mags.push(mag);
+        this.samples.push({tMs, x, y, z, mag});
+        
+        // Check if window is complete
+        if (tMs - this.windowStart >= this.windowMs) {
+            // Check if we have minimum samples
+            if (this.mags.length < this.minSamples) {
+                // Discard window and start fresh
+                this.reset();
+                return null;
+            }
+            
+            // Extract features
+            const mean_mag = this.mean(this.mags);
+            const std_mag = this.std(this.mags);
+            const max_mag = Math.max(...this.mags);
+            
+            const features = {
+                mean_mag,
+                std_mag,
+                max_mag
+            };
+            
+            // Classify
+            const label = (std_mag > this.stdThreshold || max_mag > this.maxThreshold) ? 'Jump' : 'Walk';
+            
+            const result = {
+                label,
+                features,
+                samples: this.samples.length
+            };
+            
+            // Reset for next window
+            this.reset();
+            
+            return result;
+        }
+        
+        return null;
+    }
+}
+
 let accelerometer = null;
 let isTracking = false;
 let dataHistory = [];
 let currentMotionType = '';
+let predictedMotion = ''; // Current predicted motion type
 let usingDeviceMotion = false; // Track which API we're using
 let motionHandler = null; // Handler for DeviceMotion events
+let classifier = new WalkJumpWindowClassifier(); // Window-based classifier
 
 function updateStatus(message, isActive) {
     const statusEl = document.getElementById('status');
@@ -33,18 +118,33 @@ function startDeviceMotionTracking() {
         const acc = event.accelerationIncludingGravity;
         
         if (acc && acc.x !== null && acc.y !== null && acc.z !== null) {
-            const x = acc.x.toFixed(2);
-            const y = acc.y.toFixed(2);
-            const z = acc.z.toFixed(2);
+            // Keep numeric values
+            const x = acc.x;
+            const y = acc.y;
+            const z = acc.z;
             
-            // Update current display
-            document.getElementById('xValue').textContent = x;
-            document.getElementById('yValue').textContent = y;
-            document.getElementById('zValue').textContent = z;
+            // Update current display with formatted values
+            document.getElementById('xValue').textContent = x.toFixed(2);
+            document.getElementById('yValue').textContent = y.toFixed(2);
+            document.getElementById('zValue').textContent = z.toFixed(2);
             document.getElementById('currentMotion').textContent = currentMotionType;
             
-            // Record data
-            recordData(x, y, z, currentMotionType);
+            // Add sample to classifier
+            const result = classifier.addSample({
+                tMs: Date.now(),
+                x,
+                y,
+                z
+            });
+            
+            // Update prediction if window completed
+            if (result) {
+                predictedMotion = result.label;
+                updatePredictionDisplay();
+            }
+            
+            // Record data with numeric values
+            recordData(x, y, z, currentMotionType, predictedMotion);
         }
     };
     
@@ -68,6 +168,11 @@ async function startTracking() {
 
     currentMotionType = motionInput;
     
+    // Reset classifier and prediction
+    classifier.reset();
+    predictedMotion = '';
+    updatePredictionDisplay();
+    
     // Try Accelerometer API first (works on Android Chrome, desktop)
     if ('Accelerometer' in window) {
         try {
@@ -76,18 +181,33 @@ async function startTracking() {
             accelerometer = new Accelerometer({ frequency: 10 });
             
             accelerometer.addEventListener('reading', () => {
-                const x = accelerometer.x.toFixed(2);
-                const y = accelerometer.y.toFixed(2);
-                const z = accelerometer.z.toFixed(2);
+                // Keep numeric values
+                const x = accelerometer.x;
+                const y = accelerometer.y;
+                const z = accelerometer.z;
                 
-                // Update current display
-                document.getElementById('xValue').textContent = x;
-                document.getElementById('yValue').textContent = y;
-                document.getElementById('zValue').textContent = z;
+                // Update current display with formatted values
+                document.getElementById('xValue').textContent = x.toFixed(2);
+                document.getElementById('yValue').textContent = y.toFixed(2);
+                document.getElementById('zValue').textContent = z.toFixed(2);
                 document.getElementById('currentMotion').textContent = currentMotionType;
                 
-                // Record data
-                recordData(x, y, z, currentMotionType);
+                // Add sample to classifier
+                const result = classifier.addSample({
+                    tMs: Date.now(),
+                    x,
+                    y,
+                    z
+                });
+                
+                // Update prediction if window completed
+                if (result) {
+                    predictedMotion = result.label;
+                    updatePredictionDisplay();
+                }
+                
+                // Record data with numeric values
+                recordData(x, y, z, currentMotionType, predictedMotion);
             });
 
             accelerometer.addEventListener('error', (event) => {
@@ -148,6 +268,11 @@ function stopTracking() {
         accelerometer = null;
     }
     
+    // Reset classifier and prediction
+    classifier.reset();
+    predictedMotion = '';
+    updatePredictionDisplay();
+    
     isTracking = false;
     document.getElementById('startBtn').style.display = 'block';
     document.getElementById('stopBtn').style.display = 'none';
@@ -156,14 +281,22 @@ function stopTracking() {
     updateStatus('Tracking stopped', false);
 }
 
-function recordData(x, y, z, motionType) {
+function updatePredictionDisplay() {
+    const predictionEl = document.getElementById('predictedMotion');
+    if (predictionEl) {
+        predictionEl.textContent = predictedMotion || '-';
+    }
+}
+
+function recordData(x, y, z, motionType, predictedMotion) {
     const timestamp = new Date().toISOString();
     const dataPoint = {
         timestamp,
         x,
         y,
         z,
-        motionType
+        motionType,
+        predictedMotion: predictedMotion || ''
     };
     
     dataHistory.push(dataPoint);
@@ -185,7 +318,7 @@ function updateHistoryDisplay() {
     const recentData = dataHistory.slice(-20).reverse();
     
     let html = '<table class="history-table"><thead><tr>';
-    html += '<th>Timestamp</th><th>Motion Type</th><th>X</th><th>Y</th><th>Z</th>';
+    html += '<th>Timestamp</th><th>Motion Type</th><th>Predicted</th><th>X</th><th>Y</th><th>Z</th>';
     html += '</tr></thead><tbody>';
     
     recentData.forEach(data => {
@@ -193,9 +326,10 @@ function updateHistoryDisplay() {
         html += `<tr>
             <td>${time}</td>
             <td>${data.motionType}</td>
-            <td>${data.x}</td>
-            <td>${data.y}</td>
-            <td>${data.z}</td>
+            <td>${data.predictedMotion || '-'}</td>
+            <td>${typeof data.x === 'number' ? data.x.toFixed(2) : data.x}</td>
+            <td>${typeof data.y === 'number' ? data.y.toFixed(2) : data.y}</td>
+            <td>${typeof data.z === 'number' ? data.z.toFixed(2) : data.z}</td>
         </tr>`;
     });
     
@@ -211,10 +345,13 @@ function updateHistoryDisplay() {
 }
 
 function updateCSV() {
-    let csv = 'Timestamp,Motion Type,X,Y,Z\n';
+    let csv = 'Timestamp,Motion Type,Predicted,X,Y,Z\n';
     
     dataHistory.forEach(data => {
-        csv += `${data.timestamp},${data.motionType},${data.x},${data.y},${data.z}\n`;
+        const x = typeof data.x === 'number' ? data.x.toFixed(2) : data.x;
+        const y = typeof data.y === 'number' ? data.y.toFixed(2) : data.y;
+        const z = typeof data.z === 'number' ? data.z.toFixed(2) : data.z;
+        csv += `${data.timestamp},${data.motionType},${data.predictedMotion || ''},${x},${y},${z}\n`;
     });
     
     document.getElementById('csvOutput').value = csv;
