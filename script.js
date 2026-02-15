@@ -112,21 +112,22 @@ let sessionDataCount = 0; // Counter for data points in current tracking session
 let isDataModeEnabled = false; // Flag to track if data collection mode is enabled
 
 function toggleDataMode() {
-    isDataModeEnabled = document.getElementById('dataMode').checked;
+    const checkbox = document.getElementById('dataMode');
+    isDataModeEnabled = checkbox.checked;
     
-    // Toggle visibility of data-related sections
+    // Toggle visibility of data-related sections using CSS classes
     const dataCounterContainer = document.getElementById('dataCounterContainer');
     const dataHistorySection = document.getElementById('dataHistorySection');
     const exportSection = document.getElementById('exportSection');
     
     if (isDataModeEnabled) {
-        dataCounterContainer.style.display = 'flex';
-        dataHistorySection.style.display = 'block';
-        exportSection.style.display = 'block';
+        dataCounterContainer.classList.remove('hidden');
+        dataHistorySection.classList.remove('hidden');
+        exportSection.classList.remove('hidden');
     } else {
-        dataCounterContainer.style.display = 'none';
-        dataHistorySection.style.display = 'none';
-        exportSection.style.display = 'none';
+        dataCounterContainer.classList.add('hidden');
+        dataHistorySection.classList.add('hidden');
+        exportSection.classList.add('hidden');
     }
 }
 
@@ -490,6 +491,14 @@ function clearData() {
 
 // Initialize on page load
 window.addEventListener('load', () => {
+    // Initialize data mode state from checkbox
+    const checkbox = document.getElementById('dataMode');
+    if (checkbox) {
+        isDataModeEnabled = checkbox.checked;
+        // Sync UI with initial checkbox state
+        toggleDataMode();
+    }
+    
     updateHistoryDisplay();
     
     // Check for sensor API support
