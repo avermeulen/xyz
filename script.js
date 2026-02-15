@@ -3,6 +3,7 @@ let isTracking = false;
 let dataHistory = [];
 let currentMotionType = '';
 let usingDeviceMotion = false; // Track which API we're using
+let motionHandler = null; // Handler for DeviceMotion events
 
 function updateStatus(message, isActive) {
     const statusEl = document.getElementById('status');
@@ -26,7 +27,7 @@ async function requestMotionPermission() {
 }
 
 function startDeviceMotionTracking() {
-    const handleMotion = (event) => {
+    motionHandler = (event) => {
         // DeviceMotionEvent provides acceleration data including gravity
         // accelerationIncludingGravity gives us the raw accelerometer data
         const acc = event.accelerationIncludingGravity;
@@ -47,10 +48,7 @@ function startDeviceMotionTracking() {
         }
     };
     
-    window.addEventListener('devicemotion', handleMotion);
-    
-    // Store the handler so we can remove it later
-    window.currentMotionHandler = handleMotion;
+    window.addEventListener('devicemotion', motionHandler);
     usingDeviceMotion = true;
     isTracking = true;
     
@@ -139,9 +137,9 @@ async function startTracking() {
 function stopTracking() {
     if (usingDeviceMotion) {
         // Remove DeviceMotion event listener
-        if (window.currentMotionHandler) {
-            window.removeEventListener('devicemotion', window.currentMotionHandler);
-            window.currentMotionHandler = null;
+        if (motionHandler) {
+            window.removeEventListener('devicemotion', motionHandler);
+            motionHandler = null;
         }
         usingDeviceMotion = false;
     } else if (accelerometer) {
