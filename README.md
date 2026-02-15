@@ -6,7 +6,7 @@ A web-based application for tracking and recording accelerometer data from mobil
 
 - **Real-time Accelerometer Tracking**: Capture X, Y, and Z axis accelerometer data in real-time
 - **Motion Labeling**: Label your activities (walk, run, jump, stand, sit, etc.) for supervised learning
-- **Automatic Classification**: Built-in Walk/Jump classifier that predicts motion type using time-window feature extraction
+- **Automatic Classification**: Built-in motion classifier that predicts motion type (Sitting, Walk, Jump) using time-window feature extraction
 - **Cross-Platform Support**: 
   - Android/Desktop: Uses Accelerometer API
   - iOS: Uses DeviceMotion API with permission handling
@@ -28,11 +28,16 @@ A web-based application for tracking and recording accelerometer data from mobil
 
 ### Motion Classification
 
-The application includes a `WalkJumpWindowClassifier` that:
+The application includes a `MotionClassifier` that:
 - Processes accelerometer data in 500ms time windows
 - Calculates statistical features (mean, standard deviation, max magnitude)
-- Classifies motion as "Walk" or "Jump" based on configurable thresholds
+- Classifies motion as "Sitting", "Walk", or "Jump" based on configurable thresholds
 - Uses magnitude-based feature extraction for motion detection
+
+#### Classification Logic
+- **Sitting**: Detected when standard deviation < 0.5 (low motion variability)
+- **Jump**: Detected when standard deviation > 3.0 OR max magnitude > 15.0 (high motion intensity)
+- **Walk**: Detected for moderate motion (between sitting and jumping thresholds)
 
 ### Browser Compatibility
 
