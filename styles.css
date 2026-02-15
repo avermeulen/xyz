@@ -47,6 +47,35 @@ h1 {
     border: 1px solid #f5c6cb;
 }
 
+.data-counter-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.data-counter-label {
+    font-size: 1rem;
+    color: #555;
+    font-weight: 500;
+}
+
+.data-counter-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+    min-width: 60px;
+    text-align: center;
+    background: white;
+    padding: 8px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
 .controls {
     display: grid;
     grid-template-columns: 1fr auto;

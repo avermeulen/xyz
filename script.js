@@ -108,10 +108,19 @@ let classifier = new MotionClassifier({
     jumpMaxThreshold: 15.0
 }); // Window-based 3-class classifier
 
+let sessionDataCount = 0; // Counter for data points in current tracking session
+
 function updateStatus(message, isActive) {
     const statusEl = document.getElementById('status');
     statusEl.textContent = message;
     statusEl.className = isActive ? 'status active' : 'status inactive';
+}
+
+function updateDataCounter() {
+    const counterEl = document.getElementById('dataCounter');
+    if (counterEl) {
+        counterEl.textContent = sessionDataCount;
+    }
 }
 
 async function requestMotionPermission() {
@@ -190,6 +199,10 @@ async function startTracking() {
     classifier.reset();
     predictedMotion = '';
     updatePredictionDisplay();
+    
+    // Reset session data counter
+    sessionDataCount = 0;
+    updateDataCounter();
     
     // Try Accelerometer API first (works on Android Chrome, desktop)
     if ('Accelerometer' in window) {
@@ -322,6 +335,10 @@ function recordData(x, y, z, motionType, predictedMotion) {
     };
     
     dataHistory.push(dataPoint);
+    
+    // Increment session data counter
+    sessionDataCount++;
+    updateDataCounter();
     
     // Update display
     updateHistoryDisplay();
