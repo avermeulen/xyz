@@ -1,13 +1,15 @@
-// WalkJumpWindowClassifier: Time-based window feature extraction and classification
-class WalkJumpWindowClassifier {
+// MotionClassifier: Time-based window feature extraction and 3-class classification
+class MotionClassifier {
+    static LABEL_SITTING = 'Sitting';
     static LABEL_WALK = 'Walk';
     static LABEL_JUMP = 'Jump';
     
     constructor(config = {}) {
         this.windowMs = config.windowMs || 500;
         this.minSamples = config.minSamples || 10;
-        this.stdThreshold = config.stdThreshold || 3.0;
-        this.maxThreshold = config.maxThreshold || 15.0;
+        this.sitStdThreshold = config.sitStdThreshold || 0.5;
+        this.jumpStdThreshold = config.jumpStdThreshold || 3.0;
+        this.jumpMaxThreshold = config.jumpMaxThreshold || 15.0;
         
         this.reset();
     }
@@ -65,10 +67,15 @@ class WalkJumpWindowClassifier {
                 max_mag
             };
             
-            // Classify
-            const label = (std_mag > this.stdThreshold || max_mag > this.maxThreshold) 
-                ? WalkJumpWindowClassifier.LABEL_JUMP 
-                : WalkJumpWindowClassifier.LABEL_WALK;
+            // Classify using 3-class rule
+            let label;
+            if (std_mag > this.jumpStdThreshold || max_mag > this.jumpMaxThreshold) {
+                label = MotionClassifier.LABEL_JUMP;
+            } else if (std_mag < this.sitStdThreshold) {
+                label = MotionClassifier.LABEL_SITTING;
+            } else {
+                label = MotionClassifier.LABEL_WALK;
+            }
             
             const result = {
                 label,
@@ -93,7 +100,14 @@ let currentMotionType = '';
 let predictedMotion = ''; // Current predicted motion type
 let usingDeviceMotion = false; // Track which API we're using
 let motionHandler = null; // Handler for DeviceMotion events
-let classifier = new WalkJumpWindowClassifier(); // Window-based classifier
+let classifier = new MotionClassifier({
+    windowMs: 500,
+    minSamples: 10,
+    sitStdThreshold: 0.5,
+    jumpStdThreshold: 3.0,
+    jumpMaxThreshold: 15.0
+}); // Window-based 3-class classifier
+
 let sessionDataCount = 0; // Counter for data points in current tracking session
 
 function updateStatus(message, isActive) {
