@@ -1,5 +1,8 @@
 // WalkJumpWindowClassifier: Time-based window feature extraction and classification
 class WalkJumpWindowClassifier {
+    static LABEL_WALK = 'Walk';
+    static LABEL_JUMP = 'Jump';
+    
     constructor(config = {}) {
         this.windowMs = config.windowMs || 500;
         this.minSamples = config.minSamples || 10;
@@ -54,7 +57,7 @@ class WalkJumpWindowClassifier {
             // Extract features
             const mean_mag = this.mean(this.mags);
             const std_mag = this.std(this.mags);
-            const max_mag = Math.max(...this.mags);
+            const max_mag = this.mags.reduce((a, b) => Math.max(a, b), -Infinity);
             
             const features = {
                 mean_mag,
@@ -63,7 +66,9 @@ class WalkJumpWindowClassifier {
             };
             
             // Classify
-            const label = (std_mag > this.stdThreshold || max_mag > this.maxThreshold) ? 'Jump' : 'Walk';
+            const label = (std_mag > this.stdThreshold || max_mag > this.maxThreshold) 
+                ? WalkJumpWindowClassifier.LABEL_JUMP 
+                : WalkJumpWindowClassifier.LABEL_WALK;
             
             const result = {
                 label,
@@ -288,6 +293,10 @@ function updatePredictionDisplay() {
     }
 }
 
+function formatAccelValue(value) {
+    return typeof value === 'number' ? value.toFixed(2) : value;
+}
+
 function recordData(x, y, z, motionType, predictedMotion) {
     const timestamp = new Date().toISOString();
     const dataPoint = {
@@ -327,9 +336,9 @@ function updateHistoryDisplay() {
             <td>${time}</td>
             <td>${data.motionType}</td>
             <td>${data.predictedMotion || '-'}</td>
-            <td>${typeof data.x === 'number' ? data.x.toFixed(2) : data.x}</td>
-            <td>${typeof data.y === 'number' ? data.y.toFixed(2) : data.y}</td>
-            <td>${typeof data.z === 'number' ? data.z.toFixed(2) : data.z}</td>
+            <td>${formatAccelValue(data.x)}</td>
+            <td>${formatAccelValue(data.y)}</td>
+            <td>${formatAccelValue(data.z)}</td>
         </tr>`;
     });
     
@@ -348,9 +357,9 @@ function updateCSV() {
     let csv = 'Timestamp,Motion Type,Predicted,X,Y,Z\n';
     
     dataHistory.forEach(data => {
-        const x = typeof data.x === 'number' ? data.x.toFixed(2) : data.x;
-        const y = typeof data.y === 'number' ? data.y.toFixed(2) : data.y;
-        const z = typeof data.z === 'number' ? data.z.toFixed(2) : data.z;
+        const x = formatAccelValue(data.x);
+        const y = formatAccelValue(data.y);
+        const z = formatAccelValue(data.z);
         csv += `${data.timestamp},${data.motionType},${data.predictedMotion || ''},${x},${y},${z}\n`;
     });
     
