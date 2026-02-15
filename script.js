@@ -2,6 +2,7 @@ let accelerometer = null;
 let isTracking = false;
 let dataHistory = [];
 let currentMotionType = '';
+let usingDeviceMotion = false; // Track which API we're using
 
 function updateStatus(message, isActive) {
     const statusEl = document.getElementById('status');
@@ -9,29 +10,31 @@ function updateStatus(message, isActive) {
     statusEl.className = isActive ? 'status active' : 'status inactive';
 }
 
-function startTracking() {
-    if (!('Accelerometer' in window)) {
-        alert('Accelerometer is not supported by your browser. Please use a device with accelerometer support and HTTPS connection.');
-        return;
+async function requestMotionPermission() {
+    // iOS 13+ requires explicit permission for DeviceMotion
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+            const permission = await DeviceMotionEvent.requestPermission();
+            return permission === 'granted';
+        } catch (error) {
+            console.error('Error requesting motion permission:', error);
+            return false;
+        }
     }
+    // Non-iOS or older iOS - permission not required
+    return true;
+}
 
-    const motionInput = document.getElementById('motionType').value.trim();
-    if (!motionInput) {
-        alert('Please enter a motion type (e.g., walk, run, jump)');
-        return;
-    }
-
-    currentMotionType = motionInput;
-    
-    try {
-        // 10 Hz frequency provides good balance between data granularity and performance
-        // Adjust this value based on your needs: higher = more data points, lower = less memory usage
-        accelerometer = new Accelerometer({ frequency: 10 });
+function startDeviceMotionTracking() {
+    const handleMotion = (event) => {
+        // DeviceMotionEvent provides acceleration data including gravity
+        // accelerationIncludingGravity gives us the raw accelerometer data
+        const acc = event.accelerationIncludingGravity;
         
-        accelerometer.addEventListener('reading', () => {
-            const x = accelerometer.x.toFixed(2);
-            const y = accelerometer.y.toFixed(2);
-            const z = accelerometer.z.toFixed(2);
+        if (acc && acc.x !== null && acc.y !== null && acc.z !== null) {
+            const x = acc.x.toFixed(2);
+            const y = acc.y.toFixed(2);
+            const z = acc.z.toFixed(2);
             
             // Update current display
             document.getElementById('xValue').textContent = x;
@@ -41,36 +44,108 @@ function startTracking() {
             
             // Record data
             recordData(x, y, z, currentMotionType);
-        });
+        }
+    };
+    
+    window.addEventListener('devicemotion', handleMotion);
+    
+    // Store the handler so we can remove it later
+    window.currentMotionHandler = handleMotion;
+    usingDeviceMotion = true;
+    isTracking = true;
+    
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('stopBtn').style.display = 'block';
+    document.getElementById('motionType').disabled = true;
+    
+    updateStatus(`Tracking ${currentMotionType} motion...`, true);
+}
 
-        accelerometer.addEventListener('error', (event) => {
-            console.error('Accelerometer error:', event.error);
-            if (event.error.name === 'NotAllowedError') {
-                alert('Permission to access accelerometer was denied. Please grant permission and try again.');
-            } else if (event.error.name === 'NotReadableError') {
-                alert('Cannot read accelerometer data. Please check if another application is using the sensor.');
-            } else {
-                alert('Accelerometer error: ' + event.error.message);
-            }
-            stopTracking();
-        });
+async function startTracking() {
+    const motionInput = document.getElementById('motionType').value.trim();
+    if (!motionInput) {
+        alert('Please enter a motion type (e.g., walk, run, jump)');
+        return;
+    }
 
-        accelerometer.start();
-        isTracking = true;
+    currentMotionType = motionInput;
+    
+    // Try Accelerometer API first (works on Android Chrome, desktop)
+    if ('Accelerometer' in window) {
+        try {
+            // 10 Hz frequency provides good balance between data granularity and performance
+            // Adjust this value based on your needs: higher = more data points, lower = less memory usage
+            accelerometer = new Accelerometer({ frequency: 10 });
+            
+            accelerometer.addEventListener('reading', () => {
+                const x = accelerometer.x.toFixed(2);
+                const y = accelerometer.y.toFixed(2);
+                const z = accelerometer.z.toFixed(2);
+                
+                // Update current display
+                document.getElementById('xValue').textContent = x;
+                document.getElementById('yValue').textContent = y;
+                document.getElementById('zValue').textContent = z;
+                document.getElementById('currentMotion').textContent = currentMotionType;
+                
+                // Record data
+                recordData(x, y, z, currentMotionType);
+            });
+
+            accelerometer.addEventListener('error', (event) => {
+                console.error('Accelerometer error:', event.error);
+                if (event.error.name === 'NotAllowedError') {
+                    alert('Permission to access accelerometer was denied. Please grant permission and try again.');
+                } else if (event.error.name === 'NotReadableError') {
+                    alert('Cannot read accelerometer data. Please check if another application is using the sensor.');
+                } else {
+                    alert('Accelerometer error: ' + event.error.message);
+                }
+                stopTracking();
+            });
+
+            accelerometer.start();
+            usingDeviceMotion = false;
+            isTracking = true;
+            
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'block';
+            document.getElementById('motionType').disabled = true;
+            
+            updateStatus(`Tracking ${currentMotionType} motion...`, true);
+            return;
+        } catch (error) {
+            console.error('Error starting Accelerometer API:', error);
+            console.log('Falling back to DeviceMotion API...');
+        }
+    }
+    
+    // Fallback to DeviceMotion API (works on iOS Safari/Chrome)
+    if (typeof DeviceMotionEvent !== 'undefined') {
+        // Request permission for iOS 13+
+        const hasPermission = await requestMotionPermission();
         
-        document.getElementById('startBtn').style.display = 'none';
-        document.getElementById('stopBtn').style.display = 'block';
-        document.getElementById('motionType').disabled = true;
+        if (!hasPermission) {
+            alert('Motion & Orientation access is required to track accelerometer data. Please grant permission in your browser settings.');
+            return;
+        }
         
-        updateStatus(`Tracking ${currentMotionType} motion...`, true);
-    } catch (error) {
-        console.error('Error starting accelerometer:', error);
-        alert('Error starting accelerometer: ' + error.message + '\n\nMake sure you are using HTTPS and have granted sensor permissions.');
+        startDeviceMotionTracking();
+    } else {
+        alert('Accelerometer is not supported by your browser. Please use a device with accelerometer support and HTTPS connection.');
     }
 }
 
 function stopTracking() {
-    if (accelerometer) {
+    if (usingDeviceMotion) {
+        // Remove DeviceMotion event listener
+        if (window.currentMotionHandler) {
+            window.removeEventListener('devicemotion', window.currentMotionHandler);
+            window.currentMotionHandler = null;
+        }
+        usingDeviceMotion = false;
+    } else if (accelerometer) {
+        // Stop Accelerometer API
         accelerometer.stop();
         accelerometer = null;
     }
@@ -218,8 +293,15 @@ function clearData() {
 window.addEventListener('load', () => {
     updateHistoryDisplay();
     
-    // Check for Accelerometer API support
-    if (!('Accelerometer' in window)) {
-        updateStatus('⚠️ Accelerometer API not supported in this browser', false);
+    // Check for sensor API support
+    const hasAccelerometer = 'Accelerometer' in window;
+    const hasDeviceMotion = typeof DeviceMotionEvent !== 'undefined';
+    
+    if (!hasAccelerometer && !hasDeviceMotion) {
+        updateStatus('⚠️ Motion sensors not supported in this browser', false);
+    } else if (!hasAccelerometer && hasDeviceMotion) {
+        updateStatus('📱 Ready to track (using iOS motion sensors)', false);
+    } else {
+        updateStatus('Accelerometer not active - Click "Start Tracking" to begin', false);
     }
 });
