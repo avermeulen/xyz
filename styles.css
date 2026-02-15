@@ -47,9 +47,8 @@ h1 {
     border: 1px solid #f5c6cb;
 }
 
-.data-counter-container.hidden,
-.data-history.hidden,
-.export-section.hidden {
+/* Hidden state for data collection sections - applied by default and toggled by checkbox */
+.hidden {
     display: none !important;
 }
 

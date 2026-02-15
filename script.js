@@ -113,12 +113,17 @@ let isDataModeEnabled = false; // Flag to track if data collection mode is enabl
 
 function toggleDataMode() {
     const checkbox = document.getElementById('dataMode');
+    if (!checkbox) return;
+    
     isDataModeEnabled = checkbox.checked;
     
     // Toggle visibility of data-related sections using CSS classes
     const dataCounterContainer = document.getElementById('dataCounterContainer');
     const dataHistorySection = document.getElementById('dataHistorySection');
     const exportSection = document.getElementById('exportSection');
+    
+    // Check all elements exist before manipulating
+    if (!dataCounterContainer || !dataHistorySection || !exportSection) return;
     
     if (isDataModeEnabled) {
         dataCounterContainer.classList.remove('hidden');
