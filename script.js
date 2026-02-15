@@ -118,22 +118,19 @@ function toggleDataMode() {
     isDataModeEnabled = checkbox.checked;
     
     // Toggle visibility of data-related sections using CSS classes
-    const dataCounterContainer = document.getElementById('dataCounterContainer');
-    const dataHistorySection = document.getElementById('dataHistorySection');
-    const exportSection = document.getElementById('exportSection');
+    const elementIds = ['dataCounterContainer', 'dataHistorySection', 'exportSection'];
+    const elements = elementIds.map(id => document.getElementById(id));
     
     // Check all elements exist before manipulating
-    if (!dataCounterContainer || !dataHistorySection || !exportSection) return;
+    if (elements.some(el => !el)) return;
     
-    if (isDataModeEnabled) {
-        dataCounterContainer.classList.remove('hidden');
-        dataHistorySection.classList.remove('hidden');
-        exportSection.classList.remove('hidden');
-    } else {
-        dataCounterContainer.classList.add('hidden');
-        dataHistorySection.classList.add('hidden');
-        exportSection.classList.add('hidden');
-    }
+    elements.forEach(element => {
+        if (isDataModeEnabled) {
+            element.classList.remove('hidden');
+        } else {
+            element.classList.add('hidden');
+        }
+    });
 }
 
 function updateStatus(message, isActive) {
@@ -502,6 +499,8 @@ window.addEventListener('load', () => {
         isDataModeEnabled = checkbox.checked;
         // Sync UI with initial checkbox state
         toggleDataMode();
+        // Add event listener for checkbox changes
+        checkbox.addEventListener('change', toggleDataMode);
     }
     
     updateHistoryDisplay();
